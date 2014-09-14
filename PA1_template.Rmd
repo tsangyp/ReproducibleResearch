@@ -138,9 +138,9 @@ for(i in unique(activity.monitoring$interval)){
   timeseries_weekend<-rbind(timeseries_weekend,intervalaverage)
 }
 par(mfrow=c(2,1), pin=c(5,1.7))
-plot(timeseries_weekday,type="l",xlab="5-minute interval",ylab="steps",ylim=c(0,210))
+plot(timeseries_weekday,type="l",xlab="5-minute interval",ylab="Number of steps",ylim=c(0,210))
 text(0,200,"Weekday",pos=4)
-plot(timeseries_weekend,type="l",xlab="5-minute interval",ylab="steps",ylim=c(0,210))
+plot(timeseries_weekend,type="l",xlab="5-minute interval",ylab="Number of steps",ylim=c(0,210))
 text(0,200,"Weekend",pos=4)
 ```
 
