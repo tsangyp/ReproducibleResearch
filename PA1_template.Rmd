@@ -1,0 +1,146 @@
+---
+title: "Reproduceible Research"
+author: "Yinphan Tsang"
+date: "Sunday, September 14, 2014"
+output: html_document
+---
+
+```{r setworkingdir, echo=FALSE}
+library(knitr)
+setwd("C:/Users/tsangyp/Desktop/Rcode/ReproducibleResearch")
+opts_chunk$set(echo=TRUE,results="asis")
+```
+
+###Loading and preprocessing the data
+1. load the data
+```{r loaddata}
+activity.monitoring<-read.csv("activity.csv")
+```
+
+2. Process/transform the data (if necessary) into a format suitable for your analysis
+```{r sumtodaily}
+library(xts)
+#tranform to date format
+activity.monitoring$date<-as.Date(levels(activity.monitoring$date)[activity.monitoring$date])
+rawdata.xts<-xts(activity.monitoring$steps,activity.monitoring$date)
+Dtotal<-apply.daily(rawdata.xts,sum, na.rm=TRUE)
+```
+###What is mean total number of steps taken per day?
+
+For this part of the assignment, you can ignore the missing values in the dataset. 
+
+1. Make a histogram of the total number of steps taken each day
+```{r historgram}
+hist(Dtotal[-which(Dtotal[,1]==0),],30, main="Total number of steps taken each day")
+```
+
+2. Calculate and report the mean and median total number of steps taken per day
+```{r ReportMeanMedian}
+DMean<-mean(apply.daily(rawdata.xts,mean,na.rm=TRUE), na.rm=TRUE)
+DMedian<-mean(apply.daily(rawdata.xts,median,na.rm=TRUE), na.rm=TRUE)
+```
+Report: This individual takes in average (mean) `r DMean` per day and with a median `r DMedian` steps.
+
+###What is the average daily activity pattern?
+
+1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r}
+timeseries<-c()
+for(i in unique(activity.monitoring$interval)){
+  i_interval<-which(activity.monitoring$interval==i)
+  avg<-mean(activity.monitoring$steps[i_interval],na.rm=TRUE)
+  intervalaverage<-data.frame(interval=i,average=avg)
+  timeseries<-rbind(timeseries,intervalaverage)
+}
+plot(timeseries,type="l",xlab="5-minute interval",ylab="steps, averaged across all days")
+```
+
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r maximumnumbersteps}
+i_interval<-which(timeseries$average==max(timeseries$average))
+maxinterval<-timeseries$interval[i_interval]
+maxaverage<-timeseries$average[i_interval]
+```
+
+Answer: The `r maxinterval` (5-minute interval) has the maximum number `r maxaverage` steps.
+
+###Imputing missing values
+
+Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.
+
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r totalmissing}
+totalna<-length(which(is.na(activity.monitoring$steps)))
+```
+Answer: There are a total number of `r totalna` rows with NAs.
+
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+`r print("I assume all the NAs are the mean for that 5-minute interval.")`
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r fillNAs}
+update.activity.monitoring<-activity.monitoring
+for(i in unique(activity.monitoring$interval)){
+   i_interval<-which(activity.monitoring$interval==i)
+   i_interval.na<-which(is.na(activity.monitoring$steps[i_interval]))
+   i_timeseries.interval<-which(timeseries$interval==i)
+   update.activity.monitoring$steps[i_interval[i_interval.na]]<-timeseries$average[i_timeseries.interval]  
+}
+```
+
+
+4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+```{r histnewdata}
+library(xts)
+#tranform to date format
+newrawdata.xts<-xts(update.activity.monitoring$steps,update.activity.monitoring$date)
+NewDtotal<-apply.daily(newrawdata.xts,sum, na.rm=TRUE)
+hist(NewDtotal,30, main="Total number of steps taken each day")
+NewDMean<-mean(apply.daily(newrawdata.xts,mean,na.rm=TRUE), na.rm=TRUE)
+NewDMedian<-mean(apply.daily(newrawdata.xts,median,na.rm=TRUE), na.rm=TRUE)
+```
+Answer: This new data (with filled NAs) has average (mean) `r NewDMean` per day and with a median `r NewDMedian` steps.
+The mean value stays the same. Yet, median increase the value from the original dataset.
+
+
+###Are there differences in activity patterns between weekdays and weekends?
+
+For this part the `r print(paste("weekdays()"))` function may be of some help here. Use the dataset with the filled-in missing values for this part.
+
+1. Create a new factor variable in the dataset with two levels ??? ???weekday??? and ???weekend??? indicating whether a given date is a weekday or weekend day.
+```{r weekdays}
+days<-weekdays(activity.monitoring$date)
+weekend<-days
+i_weekend<-which(days=="Saturday"|days=="Sunday")
+i_weekday<-setdiff(c(1:length(days)),i_weekend)
+weekend[i_weekend]<-"weekend"
+weekend[i_weekday]<-"weekday"
+weekend<-as.factor(weekend)
+activity.monitoring<-cbind(activity.monitoring,weekend)
+```
+
+2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). The plot should look something like the following, which was creating using simulated data:
+```{r}
+timeseries_weekday<-c()
+timeseries_weekend<-c()
+for(i in unique(activity.monitoring$interval)){
+  i_interval<-which(activity.monitoring$interval==i)
+  #weekday
+  i_interval_weekday<-which(activity.monitoring$weekend[i_interval]=="weekday")
+  avg<-mean(activity.monitoring$steps[i_interval[i_interval_weekday]],na.rm=TRUE)
+  intervalaverage<-data.frame(interval=i,average=avg)
+  timeseries_weekday<-rbind(timeseries_weekday,intervalaverage)
+  #weekend
+  i_interval_weekend<-which(activity.monitoring$weekend[i_interval]=="weekend")
+  avg<-mean(activity.monitoring$steps[i_interval[i_interval_weekend]],na.rm=TRUE)
+  intervalaverage<-data.frame(interval=i,average=avg)
+  timeseries_weekend<-rbind(timeseries_weekend,intervalaverage)
+}
+par(mfrow=c(2,1), pin=c(5,1.7))
+plot(timeseries_weekday,type="l",xlab="5-minute interval",ylab="steps",ylim=c(0,210))
+text(0,200,"Weekday",pos=4)
+plot(timeseries_weekend,type="l",xlab="5-minute interval",ylab="steps",ylim=c(0,210))
+text(0,200,"Weekend",pos=4)
+```
+
